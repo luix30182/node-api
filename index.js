@@ -6,6 +6,8 @@ const url = require('url');
 const StringDecoder = require('string_decoder').StringDecoder;
 const config = require('./config');
 const fs = require('fs');
+const handlers = require('./lib/handlers'); 
+const helpers = require('./lib/helpers');
 
 //Instantitate the HTTP server
 const httpServer = http.createServer((req, res) => {
@@ -22,13 +24,13 @@ httpServer.listen(config.httpPort,() => {
 //Instantiate the HTTPS server
 const httpsServer = https.createServer(httpsServerOptions,(req, res) => {
     unifiedServer(req, res);
-  });
+});
 //Start the HTTPS server
 httpsServer.listen(config.httpsPort,() => {
     console.log(`The server is listening on port ${config.httpsPort}`);
 })
 //All the server login for http and https 
-const unifiedServer = function(req, res){
+const unifiedServer = (req, res) => {
     //Get the url and parse it
     const parseUrl = url.parse(req.url, true);
     //Get the path
@@ -56,10 +58,10 @@ const unifiedServer = function(req, res){
             'queryStringObject': queryStringObject,
             'method': method,
             'headers': headers,
-            'payload': buffer
+            'payload': helpers.parseJsonToObject(buffer)
         };
         //Route the request to the handler specified in the router
-        choosenHandler(data, function(statusCode, payload){
+        choosenHandler(data, (statusCode, payload) => {
             //Use the status code called back by the handler default to 200
             statusCode = typeof(statusCode) == 'number' ? statusCode : 200;
             //Use the payload called back by the handler, or default to an empty object
@@ -70,24 +72,14 @@ const unifiedServer = function(req, res){
             res.setHeader('Content-Type','application/json');
             res.writeHead(statusCode);
             res.end(payloadString); 
-            //Log the request path
-            console.log('Returning this response', statusCode, payloadString);
+            // console.log(trimmedPath,statusCode);
         });
     });
 }
 
-//Define handlers
-const handlers = {};
-//Sample handler
-handlers.sample = function(data, callback){
-    //Call back a http status code, and a payload object
-    callback(406,{'name':'sample handler'});
-};
-//Not found handler
-handlers.notFound = function(data, callback){
-    callback(404);
-};
 //Define a request router
 const router = {
-    'sample': handlers.sample
+    'ping': handlers.ping,
+    'users': handlers.users,
+    'tokens': handlers.tokens
 }
